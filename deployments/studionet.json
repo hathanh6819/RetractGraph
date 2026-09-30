@@ -1,0 +1,13 @@
+{
+  "network": "GenLayer Studio Next",
+  "chainId": 61997,
+  "contractAddress": "0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7",
+  "sourceFile": "contracts/retract_graph.py",
+  "status": "live-verified-v3",
+  "deployerRole": "deployment-only",
+  "custody": false,
+  "protocolVersion": 3,
+  "verifiedWorkspaceId": 1,
+  "verifiedClaimIds": [1, 2],
+  "verifiedAssessmentIds": [1, 2, 3, 4, 5]
+}
