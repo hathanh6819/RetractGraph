@@ -9,5 +9,7 @@
   "protocolVersion": 3,
   "verifiedWorkspaceId": 1,
   "verifiedClaimIds": [1, 2],
-  "verifiedAssessmentIds": [1, 2, 3, 4, 5]
+  "verifiedAssessmentIds": [1, 2, 3, 4, 5],
+  "frontend": "https://retractgraph.pages.dev",
+  "cloudflareDeploymentId": "e08d938b-68ea-4137-9f0c-46b0cb0daac3"
 }

@@ -2,6 +2,8 @@
 
 Final v3 contract: [`0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7`](https://explorer-studio-dev.genlayer.com/address/0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7), chain ID `61997`.
 
+Production frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev). Cloudflare Pages deployment ID: `e08d938b-68ea-4137-9f0c-46b0cb0daac3`.
+
 Finalized protocol readback: `RetractGraph / version 3 / pubmed-wrapper-safe-bidirectional-impact-wave`. The constructor has no inputs; the deployer has no privileged runtime role. Graph authorship and assessment were exercised with two different wallets.
 
 ## Graph construction and authorization
