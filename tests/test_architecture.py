@@ -18,6 +18,16 @@ def test_assessment_is_permissionless_and_consensus_backed():
     assert "ONLY_WORKSPACE_CREATOR" not in segment
     assert "prompt_comparative" in segment and "NOTICE_RELATION_MISMATCH" in segment
 
+def test_seal_requires_claim_bound_collective_support():
+    segment=SOURCE.split("def seal_workspace",1)[1].split("def assess_notice",1)[0]
+    assert 'c["support_status"]!=SUFFICIENT' in segment
+    assert 'c["support_revision"]!=c["revision"]' in segment
+    assert 'c["support_citations_digest"]!=sha(canon(c["citations"]).encode())' in segment
+
+def test_initial_claims_are_pending_and_publicly_verifiable():
+    assert '"status":PENDING' in SOURCE
+    assert "def verify_claim_support" in SOURCE
+
 def test_propagation_is_bounded_to_workspace_claim_ids():
     segment=SOURCE.split("def _children",1)[1].split("def _propagate",1)[0]
     assert 'for cid in w["claim_ids"]' in segment

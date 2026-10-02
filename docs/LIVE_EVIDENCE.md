@@ -1,6 +1,8 @@
-# Studio Next live evidence
+# Studio Next live evidence (v3 historical record)
 
-Final v3 contract: [`0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7`](https://explorer-studio-dev.genlayer.com/address/0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7), chain ID `61997`.
+> **Do not submit this address as the fixed release.** These transactions prove the prior v3 lifecycle only. V4 changes claim initialization, adds claim-bound collective-support verification, and hardens sealing, so it requires a new address and a fresh E2E matrix.
+
+Historical v3 contract: [`0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7`](https://explorer-studio-dev.genlayer.com/address/0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7), chain ID `61997`.
 
 Production frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev). Cloudflare Pages deployment ID: `e08d938b-68ea-4137-9f0c-46b0cb0daac3`.
 

@@ -1,13 +1,13 @@
 # RetractGraph — Scientific Evidence Cascade
 
-RetractGraph v3 is a GenLayer dApp that maintains a bounded dependency graph of scientific claims and PubMed citations. When PubMed links a retraction, erratum or expression of concern to an exact cited article, validators independently verify the relationship in either authoritative XML direction (`RetractionIn` or `RetractionOf`) and judge its bounded impact on directly supported claims. Contract code then marks downstream claims `RECHECK_REQUIRED` without pretending they are automatically false.
+RetractGraph v4 is a GenLayer dApp that maintains a bounded dependency graph of scientific claims and PubMed citations. A claim starts as `PENDING_SUPPORT`, not `CURRENT`. Validators must fetch its exact PMID set and confirm collective support; the contract binds that verdict to the claim revision and citation-set digest. Only a fully verified graph can be sealed. Later PubMed retractions, errata or expressions of concern invalidate the affected evidence edge and trigger a deterministic downstream recheck wave.
 
 The constructor takes no inputs. The deployer receives no admin, reviewer or assessment power. Any wallet can create and own a workspace, and any wallet—including a steward—can trigger assessment or reassessment on a sealed workspace.
 
 ## Distinct lifecycle
 
 ```text
-build claim graph → seal epoch → verify notice relationship
+build claim graph → collectively verify every claim → seal epoch → verify notice relationship
 → semantic edge-impact judgment → deterministic impact wave
 → add replacement citation → reassess affected branch
 ```
@@ -20,6 +20,7 @@ This is not an authorization gate, escrow, recall quarantine or two-version poli
 - `add_claim(workspace_id, claim_text)`
 - `add_citation(claim_id, pmid)`
 - `add_dependency(parent_claim_id, child_claim_id)`
+- `verify_claim_support(claim_id, expected_revision)` — permissionless and required before sealing
 - `seal_workspace(workspace_id)`
 - `assess_notice(workspace_id, article_pmid, notice_pmid)` — permissionless
 - `reassess_claim(claim_id, expected_revision)` — permissionless
@@ -49,11 +50,12 @@ npm run build
 1. Connect any wallet on Studio Next, chain ID `61997`.
 2. Create a workspace and two claims.
 3. Add at least one PMID to each claim; add claim 1 as a dependency of claim 2.
-4. Seal the workspace.
-5. From the same wallet or another wallet, assess article `27516793` with notice `28515760`.
-6. Read both claims. A material or narrowing result on claim 1 must make claim 2 `RECHECK_REQUIRED`.
-7. Repeat the exact notice pair and confirm replay rejection with no mutation.
+4. Call `verify_claim_support` for both claims. Confirm each finalized readback is `CURRENT`, `SUPPORT_SUFFICIENT`, and has matching `support_revision` and `revision`.
+5. Seal the workspace. Sealing fails if any claim is pending, stale, unsupported, missing a citation commitment, or the graph has no dependency edge.
+6. From the same wallet or another wallet, assess article `27516793` with notice `28515760`.
+7. Read both claims. A material or narrowing result on claim 1 must make claim 2 `RECHECK_REQUIRED`.
+8. Repeat the exact notice pair and confirm replay rejection with no mutation.
 
-Final Studio Next contract: [`0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7`](https://explorer-studio-dev.genlayer.com/address/0x31ca5981ccd8a0b0E50a1d17977fA36b9d6FbbE7). See [live E2E evidence](docs/LIVE_EVIDENCE.md) for linked transactions and finalized readbacks.
+Final Studio Next v4 contract: [`0xe9113918395E93948A24FFb3b0cAe20a933586A4`](https://explorer-studio-dev.genlayer.com/address/0xe9113918395E93948A24FFb3b0cAe20a933586A4). The v3 address is retained in deployment history only. See [v4 live evidence](docs/LIVE_EVIDENCE_V4.md) for the complete two-wallet lifecycle, failure/conflict paths and finalized readbacks.
 
 Live frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev)

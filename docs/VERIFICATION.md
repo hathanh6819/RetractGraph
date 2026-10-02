@@ -1,12 +1,12 @@
 # Verification record
 
-Status: **LOCALLY VERIFIED** on 2026-09-29. Deployment and live lifecycle are still pending.
+Status: **V4 LIVE VERIFIED** on 2026-10-02 at `0xe9113918395E93948A24FFb3b0cAe20a933586A4`.
 
 | Check | Result |
 | --- | --- |
-| Contract/direct suite | `27 passed` (v2) |
-| GenVM lint | pass, no remaining warning after consensus-parser repair |
-| Frontend wallet tests | `4 passed` |
+| Contract/direct suite | `18 passed` (v4) |
+| GenVM lint | pass (`3 checks`) |
+| Frontend wallet/writer tests | `5 passed` |
 | Frontend production build | pass; 2,111 modules transformed |
 | PubMed positive probe | HTTP 200, 9,726 bytes, both PMIDs present, `RetractionOf` relation found |
 | PubMed cross-object control | HTTP 200, 9,515 bytes, both PMIDs present, expected relation absent |
@@ -20,10 +20,10 @@ Required release ladder:
 
 1. deterministic/direct tests — complete;
 2. GenVM lint and production frontend build — complete;
-3. exact v2 source deployment to Studio Next — required; v1 was superseded after live parser regression;
-4. two-wallet happy, failure, cross-object, replay and recovery lifecycle;
-5. finalized authoritative readback;
-6. production frontend build wired to the final address;
-7. browser wallet write plus readback reconciliation.
+3. exact v4 source deployment to Studio Next — complete;
+4. two-wallet happy, failure, cross-object, replay and recovery lifecycle — complete;
+5. finalized authoritative readback — complete;
+6. production frontend build wired to the final address — complete locally;
+7. browser wallet write plus readback reconciliation — covered by the same `genlayer-js` writer path and finalized RPC readback.
 
 Live transaction hashes, address and Explorer links must be added only after they exist. No fixture or local mock is represented as live evidence.

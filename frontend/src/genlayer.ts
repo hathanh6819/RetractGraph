@@ -23,9 +23,9 @@ export async function connectedWallet(provider:InjectedProvider|undefined,expect
 export async function connectWallet(){return(await connectedWallet(window.ethereum)).account}
 export const readFinalized=<T=unknown>(functionName:string,args:CalldataEncodable[]=[])=>reader.readContract({address:CONTRACT,functionName,args,jsonSafeReturn:true,stateStatus:'finalized'} as never) as Promise<T>;
 export async function writeFinalized(expected:string,functionName:string,args:CalldataEncodable[]){
- if(!configured)throw Error('Contract address is not configured.');const{client}=await connectedWallet(window.ethereum,expected);
- const fees=await client.estimateTransactionFees({leaderTimeunitsAllocation:300n,validatorTimeunitsAllocation:700n});
- const raw=await client.writeContract({address:CONTRACT,functionName,args,fees:{distribution:fees.distribution,feeValue:fees.feeValue}} as never);
+ if(!configured)throw Error('Contract address is not configured.');const{account,client}=await connectedWallet(window.ethereum,expected);
+ const fees=await client.estimateTransactionFees({leaderTimeunitsAllocation:300n,validatorTimeunitsAllocation:600n});
+ const raw=await client.writeContract({account:account as `0x${string}`,address:CONTRACT,functionName,args,fees:{distribution:fees.distribution,feeValue:fees.feeValue}} as never);
  const hash=(typeof raw==='string'?raw:(raw as{hash?:string;txId?:string}).hash||(raw as{txId?:string}).txId||'') as TransactionHash;
  if(!/^0x[a-fA-F0-9]{64}$/.test(hash))throw Error('Wallet returned an invalid transaction hash.');
  const receipt=await reader.waitForTransactionReceipt({hash,waitUntil:'finalized',interval:4000,retries:300}) as {txExecutionResultName?:string;consensusResultName?:string};

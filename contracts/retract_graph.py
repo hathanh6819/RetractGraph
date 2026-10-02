@@ -5,7 +5,7 @@ import hashlib, json, re, typing
 from datetime import datetime
 
 MAX_CLAIMS=12;MAX_CITATIONS=5;MAX_TEXT=600;MAX_BODY=120000
-DRAFT="DRAFT";SEALED="SEALED";CURRENT="CURRENT";BROKEN="BROKEN";NARROWED="NARROWED";RECHECK="RECHECK_REQUIRED";PENDING="PENDING_RECHECK";UNRESOLVED="UNRESOLVED"
+DRAFT="DRAFT";SEALED="SEALED";CURRENT="CURRENT";BROKEN="BROKEN";NARROWED="NARROWED";RECHECK="RECHECK_REQUIRED";PENDING="PENDING_SUPPORT";UNRESOLVED="UNRESOLVED"
 MATERIAL="MATERIAL_INVALIDATION";LIMITED="LIMITED_IMPACT";NO_IMPACT="NO_MATERIAL_IMPACT";SUFFICIENT="SUPPORT_SUFFICIENT";INSUFFICIENT="SUPPORT_INSUFFICIENT"
 EFETCH="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="
 
@@ -70,7 +70,7 @@ class RetractGraph(gl.Contract):
             parent=frontier.pop(0);steps+=1
             for child in self._children(wid,parent):
                 if child["id"] not in seen:
-                    if child["status"] not in (BROKEN,NARROWED):child["status"]=RECHECK;child["revision"]+=1;self._save_claim(child)
+                    if child["status"] not in (BROKEN,NARROWED):child["status"]=RECHECK;child["reason"]="UPSTREAM_EVIDENCE_CHANGED";child["support_status"]="STALE";child["revision"]+=1;self._save_claim(child)
                     seen[child["id"]]=True;frontier.append(child["id"])
 
     @gl.public.write
@@ -90,7 +90,7 @@ class RetractGraph(gl.Contract):
         if len(text)<20 or len(text)>MAX_TEXT:return "INVALID_CLAIM_TEXT"
         if len(w["claim_ids"])>=MAX_CLAIMS:return "CLAIM_LIMIT"
         cid=u256(int(self.claim_count)+1);self.claim_count=cid
-        self.claims[cid]=canon({"id":int(cid),"workspace_id":int(workspace_id),"text":text,"status":CURRENT,"revision":1,"citations":[],"parents":[],"last_assessment_id":0,"reason":"NOT_ASSESSED","evidence_digest":""})
+        self.claims[cid]=canon({"id":int(cid),"workspace_id":int(workspace_id),"text":text,"status":PENDING,"revision":1,"citations":[],"parents":[],"last_assessment_id":0,"last_support_assessment_id":0,"support_status":"NOT_VERIFIED","support_revision":0,"support_citations_digest":"","reason":"SUPPORT_NOT_VERIFIED","evidence_digest":""})
         w["claim_ids"].append(int(cid));w["revision"]+=1;self._save_workspace(w);return cid
 
     @gl.public.write
@@ -103,8 +103,7 @@ class RetractGraph(gl.Contract):
         if pmid in c["citations"]:return "CITATION_ALREADY_ADDED"
         if len(c["citations"])>=MAX_CITATIONS:return "CITATION_LIMIT"
         if w["status"]==SEALED and c["status"] not in (BROKEN,NARROWED,RECHECK,UNRESOLVED):return "CLAIM_NOT_REPAIRABLE"
-        c["citations"].append(pmid);c["revision"]+=1
-        if w["status"]==SEALED:c["status"]=PENDING;c["reason"]="REPLACEMENT_ADDED"
+        c["citations"].append(pmid);c["revision"]+=1;c["status"]=PENDING;c["reason"]="CITATIONS_CHANGED";c["support_status"]="NOT_VERIFIED";c["support_revision"]=0;c["support_citations_digest"]="";c["evidence_digest"]=""
         self._save_claim(c);return "CITATION_ADDED"
 
     @gl.public.write
@@ -118,7 +117,7 @@ class RetractGraph(gl.Contract):
         if int(parent_claim_id) in child["parents"]:return "DEPENDENCY_ALREADY_ADDED"
         # Claims are append-only IDs; parent must be older, making cycles unreachable.
         if int(parent_claim_id)>=int(child_claim_id):return "DEPENDENCY_ORDER_INVALID"
-        child["parents"].append(int(parent_claim_id));child["revision"]+=1;self._save_claim(child);return "DEPENDENCY_ADDED"
+        child["parents"].append(int(parent_claim_id));child["revision"]+=1;child["status"]=PENDING;child["reason"]="DEPENDENCIES_CHANGED";child["support_status"]="NOT_VERIFIED";child["support_revision"]=0;child["support_citations_digest"]="";child["evidence_digest"]="";self._save_claim(child);return "DEPENDENCY_ADDED"
 
     @gl.public.write
     def seal_workspace(self,workspace_id:u256)->str:
@@ -127,8 +126,20 @@ class RetractGraph(gl.Contract):
         if sender()!=w["creator"]:return "ONLY_WORKSPACE_CREATOR"
         if w["status"]!=DRAFT:return "WORKSPACE_ALREADY_SEALED"
         if len(w["claim_ids"])<2:return "GRAPH_TOO_SMALL"
+        edge_count=0
         for cid in w["claim_ids"]:
-            if len(self._claim(u256(cid))["citations"])<1:return "CLAIM_MISSING_CITATION"
+            c=self._claim(u256(cid))
+            if len(c["citations"])<1:return "CLAIM_MISSING_CITATION"
+            if c["status"]!=CURRENT:return "CLAIM_SUPPORT_NOT_CURRENT"
+            if c["support_status"]!=SUFFICIENT:return "CLAIM_SUPPORT_NOT_VERIFIED"
+            if c["support_revision"]!=c["revision"]:return "CLAIM_SUPPORT_STALE"
+            if c["support_citations_digest"]!=sha(canon(c["citations"]).encode()):return "CLAIM_EVIDENCE_MISMATCH"
+            if c["last_support_assessment_id"]<1 or not c["evidence_digest"] or c["reason"]!="CLAIM_DIRECTLY_SUPPORTED":return "CLAIM_SUPPORT_INCOMPLETE"
+            edge_count+=len(c["parents"])
+            for parent_id in c["parents"]:
+                parent=self._claim(u256(parent_id))
+                if parent is None or parent["workspace_id"]!=c["workspace_id"]:return "DEPENDENCY_EVIDENCE_MISMATCH"
+        if edge_count<1:return "GRAPH_MISSING_DEPENDENCY"
         w["status"]=SEALED;w["revision"]+=1;w["sealed_at"]=now();self._save_workspace(w);return SEALED
 
     @gl.public.write
@@ -185,20 +196,23 @@ class RetractGraph(gl.Contract):
         self.used_notice[replay_key]=str(int(aid))
         for row in result["results"]:
             c=self._claim(u256(row["claim_id"]));c["last_assessment_id"]=int(aid);c["reason"]=row["reason_code"];c["evidence_digest"]=sha(canon({"workspace_revision":w["revision"],"article":article_pmid,"notice":notice_pmid,"source":result["source_digest"],"claim_id":c["id"],"verdict":row["verdict"]}).encode());c["revision"]+=1
-            if row["verdict"]==MATERIAL:c["status"]=BROKEN
-            elif row["verdict"]==LIMITED:c["status"]=NARROWED
-            elif row["verdict"]==NO_IMPACT:c["status"]=CURRENT
-            else:c["status"]=UNRESOLVED
+            if row["verdict"]==MATERIAL:c["status"]=BROKEN;c["support_status"]="INVALIDATED"
+            elif row["verdict"]==LIMITED:c["status"]=NARROWED;c["support_status"]="NARROWED"
+            elif row["verdict"]==NO_IMPACT:c["status"]=CURRENT;c["support_revision"]=c["revision"]
+            else:c["status"]=UNRESOLVED;c["support_status"]=UNRESOLVED
             self._save_claim(c)
             if c["status"] in (BROKEN,NARROWED):self._propagate(workspace_id,u256(c["id"]))
         return aid
 
-    @gl.public.write
-    def reassess_claim(self,claim_id:u256,expected_revision:u256)->typing.Any:
+    def _verify_support(self,claim_id:u256,expected_revision:u256)->typing.Any:
         c=self._claim(claim_id)
         if c is None:return "CLAIM_NOT_FOUND"
         if c["revision"]!=int(expected_revision):return "STALE_CLAIM_REVISION"
-        if c["status"] not in (PENDING,RECHECK,UNRESOLVED):return "CLAIM_NOT_REASSESSABLE"
+        w=self._workspace(u256(c["workspace_id"]))
+        if w is None:return "WORKSPACE_NOT_FOUND"
+        if w["status"]==DRAFT and c["status"]!=PENDING:return "CLAIM_NOT_PENDING_SUPPORT"
+        if w["status"]==SEALED and c["status"] not in (PENDING,RECHECK,UNRESOLVED):return "CLAIM_NOT_REASSESSABLE"
+        if w["status"] not in (DRAFT,SEALED):return "WORKSPACE_STATE_INVALID"
         ids=c["citations"]
         if len(ids)<1:return "CLAIM_MISSING_CITATION"
         url=EFETCH+",".join(ids)
@@ -223,10 +237,18 @@ class RetractGraph(gl.Contract):
         if not valid_result:r={"kind":UNRESOLVED,"reason":"CONSENSUS_INVALID"}
         aid=u256(int(self.assessment_count)+1);self.assessment_count=aid
         verdict=r.get("verdict",UNRESOLVED) if r.get("kind")=="ASSESSED" else UNRESOLVED
-        record={"id":int(aid),"workspace_id":c["workspace_id"],"requester":sender(),"claim_id":int(claim_id),"status":verdict,"reason":r.get("reason","CONSENSUS_INVALID"),"source_digest":r.get("source_digest","") ,"created_at":now()};self.assessments[aid]=canon(record)
-        c["last_assessment_id"]=int(aid);c["reason"]=record["reason"];c["revision"]+=1;c["status"]=CURRENT if verdict==SUFFICIENT else BROKEN if verdict==INSUFFICIENT else UNRESOLVED;c["evidence_digest"]=sha(canon({"claim_id":int(claim_id),"claim_revision":int(expected_revision),"source":record["source_digest"],"verdict":verdict}).encode());self._save_claim(c)
+        record={"id":int(aid),"workspace_id":c["workspace_id"],"requester":sender(),"claim_id":int(claim_id),"phase":"INITIAL_SUPPORT" if w["status"]==DRAFT else "REASSESSMENT","claim_revision":int(expected_revision),"citations":list(ids),"citations_digest":sha(canon(ids).encode()),"status":verdict,"reason":r.get("reason","CONSENSUS_INVALID"),"source_digest":r.get("source_digest","") ,"created_at":now()};self.assessments[aid]=canon(record)
+        c["last_assessment_id"]=int(aid);c["last_support_assessment_id"]=int(aid);c["reason"]=record["reason"];c["revision"]+=1;c["status"]=CURRENT if verdict==SUFFICIENT else BROKEN if verdict==INSUFFICIENT else UNRESOLVED;c["support_status"]=verdict;c["support_revision"]=c["revision"];c["support_citations_digest"]=record["citations_digest"];c["evidence_digest"]=sha(canon({"claim_id":int(claim_id),"claim_revision":int(expected_revision),"citations":ids,"source":record["source_digest"],"verdict":verdict}).encode());self._save_claim(c)
         if c["status"]==BROKEN:self._propagate(u256(c["workspace_id"]),claim_id)
         return aid
+
+    @gl.public.write
+    def verify_claim_support(self,claim_id:u256,expected_revision:u256)->typing.Any:
+        return self._verify_support(claim_id,expected_revision)
+
+    @gl.public.write
+    def reassess_claim(self,claim_id:u256,expected_revision:u256)->typing.Any:
+        return self._verify_support(claim_id,expected_revision)
 
     @gl.public.view
     def get_workspace(self,workspace_id:u256)->dict:return self._workspace(workspace_id) or {}
@@ -239,6 +261,6 @@ class RetractGraph(gl.Contract):
     @gl.public.view
     def get_counts(self)->dict:return {"workspaces":int(self.workspace_count),"claims":int(self.claim_count),"assessments":int(self.assessment_count)}
     @gl.public.view
-    def get_protocol(self)->dict:return {"name":"RetractGraph","version":3,"network":"studio-dev","chain_id":61997,"architecture":"pubmed-wrapper-safe-bidirectional-impact-wave","roles":"permissionless-assessment-per-workspace","custody":False,"medical_advice":False}
+    def get_protocol(self)->dict:return {"name":"RetractGraph","version":4,"network":"studio-next","chain_id":61997,"architecture":"claim-bound-collective-support-and-impact-wave","roles":"permissionless-assessment-per-workspace","custody":False,"medical_advice":False,"seal_policy":"ALL_CLAIMS_COLLECTIVELY_VERIFIED"}
 
 Contract=RetractGraph
