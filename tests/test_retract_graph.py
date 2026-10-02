@@ -67,7 +67,8 @@ def test_seal_requires_complete_support_and_dependency(runtime):
   cid=c2.add_claim(U256(1),text);c2.add_citation(cid,pmid);claim=c2.get_claim(cid);c2.verify_claim_support(cid,U256(claim["revision"]))
  assert c2.seal_workspace(U256(1))=="GRAPH_MISSING_DEPENDENCY"
 def test_graph_mutation_invalidates_support(runtime):
- c,_,n=runtime;draft(c);root=c.get_claim(U256(1));c.verify_claim_support(U256(1),U256(root["revision"]));assert c.add_citation(U256(1),ALT)=="CITATION_ADDED";root=c.get_claim(U256(1));assert root["status"]=="PENDING_SUPPORT" and root["support_status"]=="NOT_VERIFIED"
+ c,_,n=runtime;draft(c);root=c.get_claim(U256(1));c.verify_claim_support(U256(1),U256(root["revision"]));assert c.get_claim(U256(1))["support_evidence_digest"]
+ assert c.add_citation(U256(1),ALT)=="CITATION_ADDED";root=c.get_claim(U256(1));assert root["status"]=="PENDING_SUPPORT" and root["support_status"]=="NOT_VERIFIED" and root["support_evidence_digest"]=="" and root["impact_evidence_digest"]==""
 def test_permissionless_verification_but_creator_only_edit(runtime):
  c,g,_=runtime;draft(c);g.message.sender_address=OBSERVER;claim=c.get_claim(U256(1));assert int(c.verify_claim_support(U256(1),U256(claim["revision"])))==1;assert c.add_citation(U256(2),"10969679")=="ONLY_WORKSPACE_CREATOR"
 def test_support_failure_and_source_failure_close_claim(runtime):
