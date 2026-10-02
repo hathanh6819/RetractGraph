@@ -1,29 +1,30 @@
-# Verification record
+# Verification status
 
-Status: **V4 LIVE VERIFIED** on 2026-10-02 at `0xe9113918395E93948A24FFb3b0cAe20a933586A4`.
+Updated 2026-10-02. The currently deployed contract remains **v4** at `0xe9113918395E93948A24FFb3b0cAe20a933586A4`. The working tree now contains the **v5 candidate**; it is not deployed yet and must not be represented as live evidence.
+
+## v5 candidate checks (local)
 
 | Check | Result |
 | --- | --- |
-| Contract/direct suite | `18 passed` (v4) |
-| GenVM lint | pass (`3 checks`) |
-| Frontend wallet/writer tests | `5 passed` |
-| Frontend production build | pass; 2,111 modules transformed |
-| PubMed positive probe | HTTP 200, 9,726 bytes, both PMIDs present, `RetractionOf` relation found |
-| PubMed cross-object control | HTTP 200, 9,515 bytes, both PMIDs present, expected relation absent |
+| Contract/direct + architecture suite | `23 passed` |
+| Frontend finalized-readback tests | `9 passed` across all 8 write methods, including verify + reassess separately |
+| Wallet configuration tests | `5 passed` |
+| Frontend production build | pass; 2,112 modules transformed |
+| Browser-wallet transaction journey | **Not run**. The tests use injected read/write adapters; they do not prove browser UI interaction. |
+| Studio Next v5 deployment / two-wallet lifecycle | **Pending**. No v5 deployment address or transaction hashes exist yet. |
+| Cloudflare v5 frontend deployment | **Pending** until the v5 contract is deployed and the frontend is wired to its finalized address. |
 
-Observed probe SHA-256 values are temporal diagnostics, not permanent publication identities:
+The v5 code separates claim support and notice-impact evidence digests, tracks the latest workspace assessment across support and impact paths, attributes propagated recheck state to the triggering assessment without copying the root impact digest to child claims, fails closed on source failure/validator disagreement, and requires every frontend write to observe its expected finalized state transition before reporting success.
 
-- positive response: `ccfbf13263173aea5df02ed80e01026ec4aa36102b0106961e42168ce08365a2`
-- cross-object response: `c41e99ced48bfe063d2ea5f1f7acca9ba1238b172e3c331a3e3c2ffc82a956ce`
+## v4 live evidence
 
-Required release ladder:
+The previously recorded v4 deployment, probes, wallet lifecycle, and transaction hashes are preserved in [LIVE_EVIDENCE_V4.md](LIVE_EVIDENCE_V4.md). They remain valid for v4 only and do not establish v5 behavior.
 
-1. deterministic/direct tests — complete;
-2. GenVM lint and production frontend build — complete;
-3. exact v4 source deployment to Studio Next — complete;
-4. two-wallet happy, failure, cross-object, replay and recovery lifecycle — complete;
-5. finalized authoritative readback — complete;
-6. production frontend build wired to the final address — complete locally;
-7. browser wallet write plus readback reconciliation — covered by the same `genlayer-js` writer path and finalized RPC readback.
+## Remaining release gates
 
-Live transaction hashes, address and Explorer links must be added only after they exist. No fixture or local mock is represented as live evidence.
+1. Deploy the exact v5 source using the designated deployer wallet (not either test wallet).
+2. Verify schema loading and protocol version 5 on Studio Next.
+3. Run fresh two-wallet happy, failure, conflicting-source, replay, and repair/reassessment paths against the v5 address; record finalized receipts and readbacks.
+4. Run browser UI write/readback journeys for each write method using the wallet UI; distinguish these from SDK adapter tests.
+5. Build the frontend with the v5 address, deploy to Cloudflare Pages, and verify production contract reads and links.
+6. Update the v5 live evidence manifest with real addresses and hashes, then publish it to GitHub.

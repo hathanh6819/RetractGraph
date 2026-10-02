@@ -1,6 +1,6 @@
 # RetractGraph — Scientific Evidence Cascade
 
-RetractGraph v4 is a GenLayer dApp that maintains a bounded dependency graph of scientific claims and PubMed citations. A claim starts as `PENDING_SUPPORT`, not `CURRENT`. Validators must fetch its exact PMID set and confirm collective support; the contract binds that verdict to the claim revision and citation-set digest. Only a fully verified graph can be sealed. Later PubMed retractions, errata or expressions of concern invalidate the affected evidence edge and trigger a deterministic downstream recheck wave.
+RetractGraph is a GenLayer dApp that maintains a bounded dependency graph of scientific claims and PubMed citations. A claim starts as `PENDING_SUPPORT`, not `CURRENT`. Validators must fetch its exact PMID set and confirm collective support; the contract binds that verdict to the claim revision and citation-set digest. Only a fully verified graph can be sealed. Later PubMed retractions, errata or expressions of concern invalidate the affected evidence edge and trigger a deterministic downstream recheck wave.
 
 The constructor takes no inputs. The deployer receives no admin, reviewer or assessment power. Any wallet can create and own a workspace, and any wallet—including a steward—can trigger assessment or reassessment on a sealed workspace.
 
@@ -56,6 +56,6 @@ npm run build
 7. Read both claims. A material or narrowing result on claim 1 must make claim 2 `RECHECK_REQUIRED`.
 8. Repeat the exact notice pair and confirm replay rejection with no mutation.
 
-Final Studio Next v4 contract: [`0xe9113918395E93948A24FFb3b0cAe20a933586A4`](https://explorer-studio-dev.genlayer.com/address/0xe9113918395E93948A24FFb3b0cAe20a933586A4). The v3 address is retained in deployment history only. See [v4 live evidence](docs/LIVE_EVIDENCE_V4.md) for the complete two-wallet lifecycle, failure/conflict paths and finalized readbacks.
+Current Studio Next v4 contract: [`0xe9113918395E93948A24FFb3b0cAe20a933586A4`](https://explorer-studio-dev.genlayer.com/address/0xe9113918395E93948A24FFb3b0cAe20a933586A4). The repository contains a v5 candidate with split support/impact evidence and finalized UI readback checks; it is not yet deployed. See [verification status](docs/VERIFICATION.md) for the release gates and [v4 live evidence](docs/LIVE_EVIDENCE_V4.md) for the validated v4 lifecycle.
 
 Live frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev)

@@ -58,6 +58,8 @@ def test_claims_are_not_current_before_collective_verification(runtime):
 def test_support_is_bound_to_claim_revision_and_citations(runtime):
  c,_,n=runtime;verified(c,n);claim=c.get_claim(U256(2));assert claim["status"]=="CURRENT" and claim["support_revision"]==claim["revision"]
  a=c.get_assessment(U256(2));assert a["claim_id"]==2 and a["citations"]==[ALT] and a["phase"]=="INITIAL_SUPPORT"
+ assert c.get_workspace(U256(1))["last_assessment_id"]==2
+ assert claim["support_evidence_digest"].startswith("sha256:") and claim["impact_evidence_digest"]==""
 def test_seal_requires_complete_support_and_dependency(runtime):
  c,_,n=runtime;verified(c,n);assert c.seal_workspace(U256(1))=="SEALED"
  c2=c.__class__();c2.create_workspace("Independent claims graph")
@@ -73,12 +75,26 @@ def test_support_failure_and_source_failure_close_claim(runtime):
 def test_material_notice_invalidates_edge_and_propagates(runtime):
  c,_,n=runtime;sealed(c,n);n.answer={"results":[{"claim_id":1,"verdict":"MATERIAL_INVALIDATION","reason_code":"RETRACTION_UNDERMINES_SUPPORT"}]};assert int(c.assess_notice(U256(1),ARTICLE,NOTICE))==3
  assert c.get_claim(U256(1))["support_status"]=="INVALIDATED" and c.get_claim(U256(2))["status"]=="RECHECK_REQUIRED" and c.get_claim(U256(2))["support_status"]=="STALE"
+ root=c.get_claim(U256(1));child=c.get_claim(U256(2));assert root["support_evidence_digest"] and root["impact_evidence_digest"] and root["support_evidence_digest"]!=root["impact_evidence_digest"]
+ assert child["last_assessment_id"]==3 and child["last_support_assessment_id"]==2 and child["support_status"]=="STALE" and child["impact_evidence_digest"]==""
+ assert c.get_workspace(U256(1))["last_assessment_id"]==3
 def test_no_impact_preserves_current_support(runtime):
- c,_,n=runtime;sealed(c,n);n.answer={"results":[{"claim_id":1,"verdict":"NO_MATERIAL_IMPACT","reason_code":"NOTICE_UNRELATED_TO_CLAIM"}]};c.assess_notice(U256(1),ARTICLE,NOTICE);claim=c.get_claim(U256(1));assert claim["status"]=="CURRENT" and claim["support_revision"]==claim["revision"]
+ c,_,n=runtime;sealed(c,n);claim_before=c.get_claim(U256(1));support_digest=claim_before["support_evidence_digest"];n.answer={"results":[{"claim_id":1,"verdict":"NO_MATERIAL_IMPACT","reason_code":"NOTICE_UNRELATED_TO_CLAIM"}]};c.assess_notice(U256(1),ARTICLE,NOTICE);claim=c.get_claim(U256(1));assert claim["status"]=="CURRENT" and claim["support_revision"]==claim["revision"]
+ assert claim["support_evidence_digest"]==support_digest and claim["impact_evidence_digest"] and c.get_workspace(U256(1))["last_assessment_id"]==3
 def test_wrong_notice_and_consensus_disagreement_fail_closed(runtime):
  c,_,n=runtime;sealed(c,n);before=c.get_claim(U256(1));n.override=Response(body=envelope(block(ARTICLE,"Article","Abstract"),block(NOTICE,"Wrong","Other",relation("RetractionOf","31829105"))));aid=c.assess_notice(U256(1),ARTICLE,NOTICE);assert c.get_assessment(aid)["reason"]=="NOTICE_RELATION_MISMATCH" and c.get_claim(U256(1))==before
+def test_consensus_disagreement_records_unresolved_without_mutating_claim(runtime):
+ c,_,n=runtime;sealed(c,n);before=c.get_claim(U256(1));Eq.forced='{"kind":"CONFLICT","reason":"independent validators disagreed"}'
+ try:aid=c.assess_notice(U256(1),ARTICLE,NOTICE)
+ finally:Eq.forced=None
+ a=c.get_assessment(aid);assert a["status"]=="UNRESOLVED" and a["reason"]=="CONSENSUS_INVALID" and c.get_claim(U256(1))==before and c.get_workspace(U256(1))["last_assessment_id"]==3
+def test_source_failure_records_unresolved_without_mutating_claim(runtime):
+ c,_,n=runtime;sealed(c,n);before=c.get_claim(U256(1));n.override=Response(status=503,body=b"temporary source outage");aid=c.assess_notice(U256(1),ARTICLE,NOTICE)
+ a=c.get_assessment(aid);assert a["status"]=="UNRESOLVED" and a["reason"]=="SOURCE_UNAVAILABLE" and c.get_claim(U256(1))==before
 def test_repair_reassessment_and_replay(runtime):
  c,_,n=runtime;sealed(c,n);n.answer={"results":[{"claim_id":1,"verdict":"MATERIAL_INVALIDATION","reason_code":"RETRACTION_UNDERMINES_SUPPORT"}]};c.assess_notice(U256(1),ARTICLE,NOTICE);assert c.assess_notice(U256(1),ARTICLE,NOTICE)=="NOTICE_ALREADY_ASSESSED"
  assert c.add_citation(U256(1),ALT)=="CITATION_ADDED";claim=c.get_claim(U256(1));assert c.reassess_claim(U256(1),U256(claim["revision"]-1))=="STALE_CLAIM_REVISION";n.answer={"verdict":"SUPPORT_SUFFICIENT","reason_code":"CLAIM_DIRECTLY_SUPPORTED"};assert int(c.reassess_claim(U256(1),U256(claim["revision"])))==4
-def test_protocol_v4_and_reviewer_can_create(runtime):
- c,g,_=runtime;assert c.get_protocol()["seal_policy"]=="ALL_CLAIMS_COLLECTIVELY_VERIFIED";g.message.sender_address=OUTSIDER;assert int(c.create_workspace("Reviewer controlled test graph"))==1
+ assert c.get_workspace(U256(1))["last_assessment_id"]==4
+ assert c.get_claim(U256(1))["impact_evidence_digest"]==""
+def test_protocol_v5_and_reviewer_can_create(runtime):
+ c,g,_=runtime;p=c.get_protocol();assert p["version"]==5 and p["seal_policy"]=="ALL_CLAIMS_COLLECTIVELY_VERIFIED" and p["architecture"]=="separate-support-impact-evidence-and-assessment-readback";g.message.sender_address=OUTSIDER;assert int(c.create_workspace("Reviewer controlled test graph"))==1

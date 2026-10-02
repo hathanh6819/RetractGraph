@@ -32,3 +32,19 @@ def test_propagation_is_bounded_to_workspace_claim_ids():
     segment=SOURCE.split("def _children",1)[1].split("def _propagate",1)[0]
     assert 'for cid in w["claim_ids"]' in segment
     assert "range(1,int(self.claim_count)+1)" not in segment
+
+def test_support_and_impact_evidence_are_separate_and_scoped():
+    assert '"support_evidence_digest":""' in SOURCE
+    assert '"impact_evidence_digest":""' in SOURCE
+    assert 'c["impact_evidence_digest"]=sha(' in SOURCE
+    assert 'c["support_evidence_digest"]=sha(' in SOURCE
+    assert 'c["impact_evidence_digest"]=""' in SOURCE
+
+def test_workspace_latest_assessment_tracks_both_phases():
+    assert 'w["last_assessment_id"]=int(aid);self._save_workspace(w)' in SOURCE
+    assert 'def _propagate(self,wid,root,assessment_id)' in SOURCE
+    assert 'child["last_assessment_id"]=int(assessment_id)' in SOURCE
+
+def test_protocol_marks_v5_evidence_architecture():
+    assert '"version":5' in SOURCE
+    assert '"architecture":"separate-support-impact-evidence-and-assessment-readback"' in SOURCE
