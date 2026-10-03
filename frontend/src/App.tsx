@@ -2,7 +2,7 @@ import{useEffect,useMemo,useState}from'react';
 import{ArrowRight,ExternalLink,GitBranch,Network,RefreshCw,ScanSearch,ShieldCheck,Wallet}from'lucide-react';
 import type{CalldataEncodable}from'genlayer-js/types';
 import{CONTRACT,configured,connectWallet,explorer,readFinalized,short,txUrl,writeFinalized}from'./genlayer';
-import{writeWithReadback}from'./actions';
+import{citationPmid,writeWithReadback}from'./actions';
 
 type Log={label:string;hash:string};type Claim={id:number;text:string;status:string;revision:number;citations:string[];parents:number[];reason:string;last_assessment_id?:number};
 const fixture={article:'27516793',notice:'28515760',child:'322561',replacement:'10969679'};
@@ -17,7 +17,7 @@ export default function App(){
  const addFirst=()=>send('Add root claim','add_claim',[wid,'A left ventricular pseudoaneurysm may appear as a lung mass after cardiac surgery.']);
  const addSecond=()=>send('Add downstream claim','add_claim',[wid,'Diagnostic guidance should explicitly consider cardiac pseudoaneurysm in this presentation.']);
  const graphIds=(workspace?.claim_ids||[]) as number[];
- const citation=()=>send('Add citation','add_citation',[Number(claimId),Number(claimId)===graphIds[0]?fixture.article:fixture.child]);
+ const citation=()=>send('Add citation','add_citation',[Number(claimId),citationPmid(Number(claimId),Number(graphIds[0]),fixture.article,fixture.child)]);
  const dependency=()=>{if(graphIds.length<2)return setError('Add and sync two claims before linking them.');void send('Link dependency','add_dependency',[graphIds[0],graphIds[1]])};const seal=()=>send('Seal graph','seal_workspace',[wid]);const assess=()=>send('Assess notice','assess_notice',[wid,fixture.article,fixture.notice]);
  const selected=claims.find(c=>c.id===Number(claimId));const verify=()=>send('Verify selected support','verify_claim_support',[Number(claimId),Number(selected?.revision||0)]);const replacement=()=>send('Add replacement','add_citation',[Number(claimId),fixture.replacement]);const reassess=()=>send('Reassess branch','reassess_claim',[Number(claimId),Number(selected?.revision||0)]);
  const edges=useMemo(()=>claims.flatMap(c=>c.parents.map(p=>`${p} → ${c.id}`)),[claims]);

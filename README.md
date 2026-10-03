@@ -56,6 +56,6 @@ npm run build
 7. Read both claims. A material or narrowing result on claim 1 must make claim 2 `RECHECK_REQUIRED`.
 8. Repeat the exact notice pair and confirm replay rejection with no mutation.
 
-Current Studio Next v5 contract: [`0x62073d9383EE35778a7308298ACEa4A314cA09eb`](https://explorer-studio-dev.genlayer.com/address/0x62073d9383EE35778a7308298ACEa4A314cA09eb). Finalized RPC confirms protocol version 5 and a no-argument constructor. Fresh two-wallet E2E evidence is still pending for v5; see [v5 live checkpoint](docs/LIVE_EVIDENCE_V5.md), [verification status](docs/VERIFICATION.md), and the complete [v4 lifecycle record](docs/LIVE_EVIDENCE_V4.md).
+Current Studio Next v5 contract: [`0x62073d9383EE35778a7308298ACEa4A314cA09eb`](https://explorer-studio-dev.genlayer.com/address/0x62073d9383EE35778a7308298ACEa4A314cA09eb). Finalized RPC confirms protocol version 5 and a no-argument constructor. Fresh two-wallet SDK E2E evidence is recorded in [v5 live evidence](docs/LIVE_EVIDENCE_V5.md); browser-wallet UI testing remains a separate verification gate in [verification status](docs/VERIFICATION.md). The complete prior v4 lifecycle record is preserved in [LIVE_EVIDENCE_V4.md](docs/LIVE_EVIDENCE_V4.md).
 
 Live frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev)

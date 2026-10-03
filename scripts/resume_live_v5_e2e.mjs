@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+import{createAccount,createClient}from'../frontend/node_modules/genlayer-js/dist/index.js';
+import{studioDevnet}from'../frontend/node_modules/genlayer-js/dist/chains/index.js';
+const CONTRACT='0x62073d9383EE35778a7308298ACEa4A314cA09eb';
+const EXPECTED_AUTHOR='0x1D283b45974B0be9630DFD1deC6A62a9B72B2760',EXPECTED_OBSERVER='0xf96Cf822F9f4e76956AB9fAAa22B3BdCD7b10aD6';
+const chain={...studioDevnet,id:61997,name:'Studio Next',rpcUrls:{default:{http:['https://studio-next.genlayer.com/api']}}};
+function hidden(prompt){return new Promise((resolve,reject)=>{process.stdout.write(prompt);process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setEncoding('utf8');let value='';const done=()=>{process.stdin.off('data',onData);process.stdin.setRawMode(false);process.stdin.pause()};const onData=chunk=>{for(const ch of chunk){if(ch==='\u0003'){done();reject(Error('Interrupted'));return}if(ch==='\r'||ch==='\n'){done();process.stdout.write('\n');resolve(value.trim());return}if(ch==='\u007f'||ch==='\b')value=value.slice(0,-1);else value+=ch}};process.stdin.on('data',onData)})}
+async function signer(label){const key=await hidden(`${label} private key (hidden input): `),account=createAccount(key.startsWith('0x')?key:`0x${key}`);return{account,client:createClient({chain,account})}}
+const author=await signer('author test wallet'),observer=await signer('observer test wallet');
+if(author.account.address.toLowerCase()!==EXPECTED_AUTHOR.toLowerCase()||observer.account.address.toLowerCase()!==EXPECTED_OBSERVER.toLowerCase())throw Error('Wallet address mismatch; no transactions were sent.');
+const read=(s,name,args=[])=>s.client.readContract({address:CONTRACT,functionName:name,args,stateStatus:'finalized',jsonSafeReturn:true});
+async function write(s,label,name,args,validators=600n){const fees=await s.client.estimateTransactionFees({leaderTimeunitsAllocation:300n,validatorTimeunitsAllocation:validators});const hash=await s.client.writeContract({account:s.account,address:CONTRACT,functionName:name,args,value:0n,fees:{distribution:fees.distribution,feeValue:fees.feeValue}});console.log(`${label}.submitted=${hash}`);const receipt=await s.client.waitForTransactionReceipt({hash,waitUntil:'finalized',interval:3000,retries:600,fullTransaction:false});const tx=await s.client.getTransaction({hash});if(receipt?.txExecutionResultName&&receipt.txExecutionResultName!=='FINISHED_WITH_RETURN')throw Error(`${label} execution ${receipt.txExecutionResultName}`);const consensus=tx.result_name||tx.result||'UNKNOWN';console.log(`${label}.finalized=${hash} execution=${receipt?.txExecutionResultName||'unknown'} consensus=${consensus}`);return{hash,consensus}}
+const check=(ok,label,data)=>{if(!ok)throw Error(`${label} failed: ${JSON.stringify(data)}`);console.log(`${label}.readback=${JSON.stringify(data)}`)};
+const protocol=await read(author,'get_protocol');let counts=await read(author,'get_counts');if(protocol.version!==5||Number(protocol.chain_id)!==61997||Number(counts.workspaces)!==1||Number(counts.claims)!==2||Number(counts.assessments)!==2)throw Error(`Unexpected starting state: ${JSON.stringify({protocol,counts})}`);
+let w=await read(author,'get_workspace',[1]),root=await read(author,'get_claim',[1]),child=await read(author,'get_claim',[2]);
+check(w.status==='SEALED'&&Number(w.last_assessment_id)===2&&root.status==='CURRENT'&&child.status==='CURRENT','resume checkpoint',{w,root,child,counts});
+// Conflict probe #3 finalized as MAJORITY_DISAGREE and produced no state change; assert that before continuing.
+const beforeConflict=await read(author,'get_counts');check(Number(beforeConflict.assessments)===2,'conflicting source did not mutate assessment state',beforeConflict);
+const valid=await write(observer,'assess_valid_retraction','assess_notice',[1,'27516793','28515760']);
+if(String(valid.consensus).includes('DISAGREE'))throw Error(`Valid retraction disagreement: ${valid.consensus}`);
+root=await read(author,'get_claim',[1]);child=await read(author,'get_claim',[2]);
+check(root.status==='BROKEN'&&root.impact_evidence_digest&&root.support_evidence_digest&&child.status==='RECHECK_REQUIRED'&&child.support_status==='STALE'&&Number(child.last_assessment_id)===Number(root.last_assessment_id)&&!child.impact_evidence_digest,'edge-scoped impact propagation',{root,child});
+let currentCounts=await read(author,'get_counts');const replay=await write(observer,'replay_same_notice','assess_notice',[1,'27516793','28515760'],300n);if(String(replay.consensus).includes('DISAGREE'))throw Error(`Replay disagreement ${replay.consensus}`);
+counts=await read(author,'get_counts');check(Number(counts.assessments)===Number(currentCounts.assessments),'notice replay is idempotent',counts);
+await write(author,'repair_root_citation','add_citation',[1,'10969679'],300n);root=await read(author,'get_claim',[1]);check(root.status==='PENDING_SUPPORT'&&!root.support_evidence_digest&&!root.impact_evidence_digest,'evidence repair invalidates digests',root);
+await write(observer,'reassess_repaired_root','reassess_claim',[1,Number(root.revision)]);root=await read(author,'get_claim',[1]);check(root.status==='CURRENT'&&root.support_evidence_digest&&!root.impact_evidence_digest,'root recovery',root);
+child=await read(author,'get_claim',[2]);await write(observer,'reassess_downstream_claim','reassess_claim',[2,Number(child.revision)]);child=await read(author,'get_claim',[2]);check(child.status==='CURRENT'&&child.support_evidence_digest,'downstream recovery',child);
+w=await read(author,'get_workspace',[1]);counts=await read(author,'get_counts');check(Number(w.last_assessment_id)===Number(child.last_assessment_id),'latest assessment readback',w);
+console.log(`e2e.final.counts=${JSON.stringify(counts)}`);console.log(`e2e.final.workspace=${JSON.stringify(w)}`);console.log(`e2e.final.root=${JSON.stringify(root)}`);console.log(`e2e.final.child=${JSON.stringify(child)}`);console.log('e2e.result=PASS');

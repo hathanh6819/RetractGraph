@@ -1,15 +1,15 @@
 {
   "network": "GenLayer Studio Next",
   "chainId": 61997,
-  "contractAddress": "0xe9113918395E93948A24FFb3b0cAe20a933586A4",
+  "contractAddress": "0x62073d9383EE35778a7308298ACEa4A314cA09eb",
   "sourceFile": "contracts/retract_graph.py",
-  "status": "live-verified-v4",
+  "status": "live-verified-v5",
   "deployerRole": "deployment-only",
   "custody": false,
-  "protocolVersion": 4,
+  "protocolVersion": 5,
   "verifiedWorkspaceId": 1,
   "verifiedClaimIds": [1, 2],
-  "verifiedAssessmentIds": [1, 2, 3, 4, 5, 6, 7],
+  "verifiedAssessmentIds": [1, 2, 3, 4, 5],
   "frontend": "https://retractgraph.pages.dev",
-  "cloudflareDeploymentId": "3fa1ae2f-d076-4100-9935-53cb8be1291e"
+  "cloudflareDeploymentId": "744ade6b-f62d-4551-8626-855d255e3451"
 }

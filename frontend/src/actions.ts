@@ -6,6 +6,11 @@ type Dependencies={read:Read;write:Write;pause?:(ms:number)=>Promise<void>;attem
 const pause=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const number=(value:unknown)=>Number(value||0);
 
+/** Keep PMIDs as strings: the contract accepts `add_citation(claim_id, pmid: str)`. */
+export function citationPmid(claimId:number,rootClaimId:number,rootPmid:string,downstreamPmid:string):string{
+ return claimId===rootClaimId?rootPmid:downstreamPmid;
+}
+
 /** Finalize a wallet write, then require its expected state transition on finalized reads. */
 export async function writeWithReadback(account:string,name:string,args:CalldataEncodable[],deps:Dependencies):Promise<string>{
  const {read,write}=deps;const wait=deps.pause||pause;const attempts=deps.attempts??8;
