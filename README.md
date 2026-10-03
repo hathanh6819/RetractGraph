@@ -59,3 +59,5 @@ npm run build
 Current Studio Next v5 contract: [`0x62073d9383EE35778a7308298ACEa4A314cA09eb`](https://explorer-studio-dev.genlayer.com/address/0x62073d9383EE35778a7308298ACEa4A314cA09eb). Finalized RPC confirms protocol version 5 and a no-argument constructor. Fresh two-wallet SDK E2E evidence is recorded in [v5 live evidence](docs/LIVE_EVIDENCE_V5.md); browser-wallet UI testing remains a separate verification gate in [verification status](docs/VERIFICATION.md). The complete prior v4 lifecycle record is preserved in [LIVE_EVIDENCE_V4.md](docs/LIVE_EVIDENCE_V4.md).
 
 Live frontend: [retractgraph.pages.dev](https://retractgraph.pages.dev)
+
+Reviewer resubmission summary and exact links: [docs/MORE_INFORMATION.md](docs/MORE_INFORMATION.md)
